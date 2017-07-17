@@ -1,0 +1,179 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion "25.0.3"
+    defaultConfig {
+        applicationId "com.egeg.aaa"
+        minSdkVersion 9
+        targetSdkVersion 19
+        versionCode Integer.parseInt(new Date().format('yyMMHHmm'))
+        versionName new Date().format('yyMMHHmm')
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++11 -frtti -fexceptions"
+                abiFilters "armeabi"
+                arguments "-DANDROID_ARM_MODE=arm"
+            }
+        }
+        manifestPlaceholders = [APP_NAME: "aaa"]
+    }
+    signingConfigs {
+        release {
+            storeFile file("$rootProject.projectDir/../../Keystore/ks1.keystore")
+            storePassword "ks123456"
+            keyAlias "ks1"
+            keyPassword "ks123456"
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "../CMakeLists.txt"
+        }
+    }
+    preBuild {
+        new File("$rootProject.projectDir/app/src/main/assets").deleteDir()
+        new File("$rootProject.projectDir/out").deleteDir()
+        copy {
+            from "$rootProject.projectDir/Resources"
+            into "$rootProject.projectDir/app/src/main/assets"
+        }
+        copy {
+            from "$rootProject.projectDir/Config.bin"
+            into "$rootProject.projectDir/app/src/main/assets"
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile project(path: ':libcocos2dx')
+}
+
+class ConfigBin {
+    String projName
+    String sdkName
+    String sdkText
+    String apkName
+    String pkg
+    byte sign
+    int hideAlpha
+    String[] args
+
+    void read(InputStream is) throws IOException {
+        DataInputStream dis = new DataInputStream(is)
+        dis.readInt()
+        projName = dis.readUTF()
+        sdkName = dis.readUTF()
+        sdkText = dis.readUTF()
+        apkName = dis.readUTF()
+        pkg = dis.readUTF()
+        sign = dis.readByte()
+        hideAlpha = dis.readInt()
+        byte count = dis.readByte()
+        if (count > 0) {
+            args = new String[count]
+            for (int i = 0; i < count; i++)
+                args[i] = dis.readUTF()
+        }
+    }
+}
+
+boolean hasArgs(ConfigBin c, int index) {
+    if (c != null && c.args != null && c.args.length > index)
+        return true
+    return false
+}
+
+def cfb = new ConfigBin()
+def cFile = new File("$rootProject.projectDir/Config.bin")
+if (cFile.exists()) {
+    def fis = new FileInputStream(cFile)
+    cfb.read(fis)
+    fis.close()
+}
+
+def curSdk = "Success"
+if (cfb.sdkName != null)
+    curSdk = cfb.sdkName
+
+if (cfb.apkName == null || cfb.apkName.length() == 0)
+    cfb.apkName == "美女擦图"
+
+// 设置依赖
+def fff = new File("app/src/$curSdk/libs")
+if (fff.exists()) {
+    dependencies {
+        compile fileTree(include: ["*.jar"], dir: "src/$curSdk/libs")
+    }
+}
+
+// 设置签名文件
+if (cfb.sign > 1) {
+    android {
+        signingConfigs {
+            mySign {
+                storeFile file("$rootProject.projectDir/../../Keystore/ks${cfb.sign}.keystore")
+                storePassword "ks123456"
+                keyAlias "ks${cfb.sign}"
+                keyPassword "ks123456"
+            }
+        }
+        buildTypes {
+            release {
+                signingConfig signingConfigs.mySign
+            }
+        }
+    }
+}
+
+// 合并代码以及资源
+android.sourceSets {
+    def file = new File("app/src/$curSdk/AndroidManifest.xml")
+    if (file.exists())
+        main { manifest.srcFile "src/$curSdk/AndroidManifest.xml" }
+    file = new File("app/src/$curSdk/java")
+    if (file.exists())
+        main { java.srcDirs = ["src/$curSdk/java", "src/main/java"] }
+    file = new File("app/src/$curSdk/res")
+    if (file.exists())
+        main { res.srcDirs = ["src/$curSdk/res", "src/main/res"] }
+    file = new File("app/src/$curSdk/libs")
+    if (file.exists())
+        main { jniLibs.srcDirs = ["src/$curSdk/libs", "libs"] }
+    file = new File("app/src/$curSdk/assets")
+    if (file.exists())
+        main { assets.srcDirs = ["src/$curSdk/assets", "src/main/assets"] }
+}
+
+// 设置APP_NAME
+android.productFlavors {
+    defaultConfig {
+        applicationId "$cfb.pkg"
+        manifestPlaceholders = [APP_NAME: "$cfb.apkName", ICON_IDX: "0"]
+    }
+}
+
+def gameId
+
+// 设置输出
+android.applicationVariants.all { variant ->
+    variant.outputs.each { output ->
+        if (output.outputFile.name.indexOf("release") >= 0) {
+            if (gameId != null && gameId.length() > 0) {
+                output.outputFile = new File("$rootProject.projectDir/out",
+                        "${cfb.apkName}_" + "_${gameId}.apk")
+            } else {
+                output.outputFile = new File("$rootProject.projectDir/out",
+                        "${cfb.apkName}_" + "_${curSdk}.apk")
+            }
+        }
+    }
+}
