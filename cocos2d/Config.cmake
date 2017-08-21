@@ -1,4 +1,6 @@
 
+set(USE_CCS 1)
+
 if(${CMAKE_BUILD_TYPE} MATCHES "Release")
     ADD_DEFINITIONS (-DRELEASE)
 endif()
@@ -10,7 +12,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(LINUX TRUE)
     # add_definitions(-DLINUX -DN__APPLE__)
 
-    set(CMAKE_C_FLAGS_DEBUG "-g -Wall -Wextra -DCOCOS2D_DEBUG=1 -DLINUX -DN__APPLE__")
+    set(CMAKE_C_FLAGS_DEBUG "-g -Wall -Wextra -DCOCOS2D_DEBUG=1 -DLINUX -DN__APPLE__ -Wno-int-to-void-pointer-cast")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -std=c++11")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")

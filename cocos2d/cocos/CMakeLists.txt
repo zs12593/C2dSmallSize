@@ -13,7 +13,9 @@ include(deprecated/CMakeLists.txt)
 include(ui/CMakeLists.txt)
 include(audio/CMakeLists.txt)
 include(storage/CMakeLists.txt)
-include(editor-support/cocostudio/CMakeLists.txt)
+if(USE_CCS)
+  include(editor-support/cocostudio/CMakeLists.txt)
+endif()
 include(../extensions/CMakeLists.txt)
 include(../external/tinyxml2/CMakeLists.txt)
 include(../external/flatbuffers/CMakeLists.txt)
@@ -30,13 +32,16 @@ set(COCOS_SRC cocos2d.cpp
     ${COCOS_AUDIO_SRC}
     ${COCOS_UI_SRC}
     ${COCOS_DEPRECATED_SRC}
-    ${COCOS_CS_SRC}
     ${COCOS_EXTENSIONS_SRC}
     ${TINYXML2_SRC}
     ${FLATBUFFERS_SRC}
     ${XXHASH}
     ${UNZIP_SRC}
     )
+
+if(USE_CCS)
+  set(COCOS_SRC ${COCOS_SRC} ${COCOS_CS_SRC})
+endif()
 
 include_directories(../external/xxtea)
 include_directories(../external/clipper)
@@ -52,9 +57,7 @@ if(USE_CHIPMUNK)
     set(PLATFORM_LIBS chipmunk)
 endif()
 if(LINUX)
-
     set(PLATFORM_LIBS ${PLATFORM_LIBS} jpeg png fontconfig freetype X11 fmod z pthread glfw GLEW GLU GL)
-
 elseif(ANDROID)
   set(PLATFORM_LIBS ${PLATFORM_LIBS} GLESv1_CM GLESv2 EGL log android OpenSLES)
 
